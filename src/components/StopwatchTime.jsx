@@ -7,7 +7,7 @@ export default function Sidebar({ stopwatchTime, isStopwatchRunning, todos }) {
         <h2>⏱️ Stopwatch</h2>
         <div className="stopwatch-display">{formatTime(stopwatchTime)}</div>
         <div className={`status-badge ${isStopwatchRunning ? "active" : ""}`}>
-          {isStopwatchRunning ? "Running" : "Paused / Idle"}
+          {isStopwatchRunning ? "Running" : "Paused | Idle"}
         </div>
         <div className="manual-actions">
           <button

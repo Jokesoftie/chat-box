@@ -4,7 +4,7 @@ import "./App.css";
 // ============================================================================
 // CONFIGURATION & TOOL SCHEMAS (OpenRouter & Gemma 4)
 // ============================================================================
-const MODEL_ID = "meta-llama/llama-3.3-70b-instruct:free";
+const MODEL_ID = "cohere/north-mini-code:free";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const PROVIDER_NAME = "Chatbot Key";
 
@@ -219,16 +219,7 @@ export default function App() {
       },
       body: JSON.stringify({
         model: MODEL_ID,
-        messages: [
-          {
-            role: "user",
-            content: "What is the meaning of life?",
-          },
-        ],
-        // messages: messagesPayload,
-
-        // tools: TOOL_SCHEMAS,
-        // tool_choice: "auto",
+        messages: messagesPayload,
       }),
     });
 
@@ -249,9 +240,10 @@ export default function App() {
       );
     }
 
-    console.log(response.json());
-
-    return await response.json();
+    const data = await response.json();
+    console.log("Extracted Text:", data?.choices?.[0]?.message?.content);
+    
+    return data;
   };
 
   // ============================================================================
