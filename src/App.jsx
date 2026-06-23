@@ -4,79 +4,79 @@ import "./App.css";
 // ============================================================================
 // CONFIGURATION & TOOL SCHEMAS (OpenRouter & Gemma 4)
 // ============================================================================
-const MODEL_ID = "google/gemma-4-31b-it:free"; // As per project brief
+const MODEL_ID = "meta-llama/llama-3.3-70b-instruct:free";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const PROVIDER_NAME = "Chatbot Key";
 
-const TOOL_SCHEMAS = [
-  {
-    type: "function",
-    function: {
-      name: "add_todo",
-      description: "Add a new item to the user's todo list.",
-      parameters: {
-        type: "object",
-        properties: {
-          text: { type: "string", description: "The task description." },
-        },
-        required: ["text"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "list_todos",
-      description: "Retrieve all current items in the todo list.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "complete_todo",
-      description: "Mark a specific todo item as completed using its ID.",
-      parameters: {
-        type: "object",
-        properties: {
-          id: {
-            type: "number",
-            description: "The numeric ID of the todo item.",
-          },
-        },
-        required: ["id"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "start_stopwatch",
-      description: "Start the application stopwatch timer.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "stop_stopwatch",
-      description: "Stop/pause the application stopwatch timer.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_stopwatch_time",
-      description: "Get the current elapsed time of the stopwatch.",
-      parameters: { type: "object", properties: {} },
-    },
-  },
-];
+// const TOOL_SCHEMAS = [
+//   {
+//     type: "function",
+//     function: {
+//       name: "add_todo",
+//       description: "Add a new item to the user's todo list.",
+//       parameters: {
+//         type: "object",
+//         properties: {
+//           text: { type: "string", description: "The task description." },
+//         },
+//         required: ["text"],
+//       },
+//     },
+//   },
+//   {
+//     type: "function",
+//     function: {
+//       name: "list_todos",
+//       description: "Retrieve all current items in the todo list.",
+//       parameters: { type: "object", properties: {} },
+//     },
+//   },
+//   {
+//     type: "function",
+//     function: {
+//       name: "complete_todo",
+//       description: "Mark a specific todo item as completed using its ID.",
+//       parameters: {
+//         type: "object",
+//         properties: {
+//           id: {
+//             type: "number",
+//             description: "The numeric ID of the todo item.",
+//           },
+//         },
+//         required: ["id"],
+//       },
+//     },
+//   },
+//   {
+//     type: "function",
+//     function: {
+//       name: "start_stopwatch",
+//       description: "Start the application stopwatch timer.",
+//       parameters: { type: "object", properties: {} },
+//     },
+//   },
+//   {
+//     type: "function",
+//     function: {
+//       name: "stop_stopwatch",
+//       description: "Stop/pause the application stopwatch timer.",
+//       parameters: { type: "object", properties: {} },
+//     },
+//   },
+//   {
+//     type: "function",
+//     function: {
+//       name: "get_stopwatch_time",
+//       description: "Get the current elapsed time of the stopwatch.",
+//       parameters: { type: "object", properties: {} },
+//     },
+//   },
+// ];
 
 const getApiKey = () => import.meta.env.VITE_OPENROUTER_API_KEY || "";
 
 export default function App() {
-  // --- STATE ---
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -87,16 +87,13 @@ export default function App() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
   // Local Tool State: Todos
   const [todos, setTodos] = useState([
     { id: 1, text: "Explore OpenRouter API capabilities", completed: false },
   ]);
-
   // Local Tool State: Stopwatch
   const [stopwatchTime, setStopwatchTime] = useState(0);
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
-
   const messagesEndRef = useRef(null);
   const stopwatchIntervalRef = useRef(null);
 
@@ -217,13 +214,21 @@ export default function App() {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "http://localhost:5173",
+        "X-OpenRouter-Title": `${PROVIDER_NAME}`,
         "X-Title": "Local Tool React Bot",
       },
       body: JSON.stringify({
         model: MODEL_ID,
-        messages: messagesPayload,
-        tools: TOOL_SCHEMAS,
-        tool_choice: "auto",
+        messages: [
+          {
+            role: "user",
+            content: "What is the meaning of life?",
+          },
+        ],
+        // messages: messagesPayload,
+
+        // tools: TOOL_SCHEMAS,
+        // tool_choice: "auto",
       }),
     });
 
@@ -243,6 +248,8 @@ export default function App() {
         errData?.error?.message || `Server Error: HTTP ${response.status}`,
       );
     }
+
+    console.log(response.json());
 
     return await response.json();
   };
@@ -326,62 +333,6 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* LEFT PANEL: Local Dashboards for Visual Validation */}
-      <aside className="sidebar">
-        <div className="panel-section">
-          <h2>⏱️ Stopwatch</h2>
-          <div className="stopwatch-display">{formatTime(stopwatchTime)}</div>
-          <div className={`status-badge ${isStopwatchRunning ? "active" : ""}`}>
-            {isStopwatchRunning ? "Running" : "Paused / Idle"}
-          </div>
-          <div className="manual-actions">
-            <button
-              onClick={() => setIsStopwatchRunning(true)}
-              disabled={isStopwatchRunning}
-            >
-              Start
-            </button>
-            <button
-              onClick={() => setIsStopwatchRunning(false)}
-              disabled={!isStopwatchRunning}
-            >
-              Stop
-            </button>
-            <button
-              onClick={() => {
-                setIsStopwatchRunning(false);
-                setStopwatchTime(0);
-              }}
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-
-        <div className="panel-section">
-          <h2>📝 Todo List Panel</h2>
-          <ul className="todo-list">
-            {todos.length === 0 ? (
-              <p className="empty-text">No active items on your schedule.</p>
-            ) : (
-              todos.map((todo) => (
-                <li key={todo.id} className={todo.completed ? "completed" : ""}>
-                  <input
-                    type="checkbox"
-                    checked={todo.completed}
-                    onChange={() =>
-                      executeLocalTool("complete_todo", { id: todo.id })
-                    }
-                  />
-                  <span className="todo-text">{todo.text}</span>
-                  <small className="todo-id">ID: {todo.id}</small>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      </aside>
-
       {/* RIGHT PANEL: Chat Application Interface */}
       <main className="chat-area">
         <header className="chat-header">
