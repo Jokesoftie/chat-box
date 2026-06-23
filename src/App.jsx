@@ -73,7 +73,6 @@ const TOOL_SCHEMAS = [
   },
 ];
 
-// Helper to safely fetch API key from Vite environment variables
 const getApiKey = () => import.meta.env.VITE_OPENROUTER_API_KEY || "";
 
 export default function App() {
