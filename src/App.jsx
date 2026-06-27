@@ -1,78 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import Sidebar from "./components/Sidebar";
+import { TOOL_SCHEMAS } from "./constants";
+import { formatTime } from "./utils/formatter";
 
-// ============================================================================
-// CONFIGURATION & TOOL SCHEMAS (OpenRouter & Gemma 4)
-// ============================================================================
 const MODEL_ID = "cohere/north-mini-code:free";
 const API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const PROVIDER_NAME = "Chatbot Key";
-
-// const TOOL_SCHEMAS = [
-//   {
-//     type: "function",
-//     function: {
-//       name: "add_todo",
-//       description: "Add a new item to the user's todo list.",
-//       parameters: {
-//         type: "object",
-//         properties: {
-//           text: { type: "string", description: "The task description." },
-//         },
-//         required: ["text"],
-//       },
-//     },
-//   },
-//   {
-//     type: "function",
-//     function: {
-//       name: "list_todos",
-//       description: "Retrieve all current items in the todo list.",
-//       parameters: { type: "object", properties: {} },
-//     },
-//   },
-//   {
-//     type: "function",
-//     function: {
-//       name: "complete_todo",
-//       description: "Mark a specific todo item as completed using its ID.",
-//       parameters: {
-//         type: "object",
-//         properties: {
-//           id: {
-//             type: "number",
-//             description: "The numeric ID of the todo item.",
-//           },
-//         },
-//         required: ["id"],
-//       },
-//     },
-//   },
-//   {
-//     type: "function",
-//     function: {
-//       name: "start_stopwatch",
-//       description: "Start the application stopwatch timer.",
-//       parameters: { type: "object", properties: {} },
-//     },
-//   },
-//   {
-//     type: "function",
-//     function: {
-//       name: "stop_stopwatch",
-//       description: "Stop/pause the application stopwatch timer.",
-//       parameters: { type: "object", properties: {} },
-//     },
-//   },
-//   {
-//     type: "function",
-//     function: {
-//       name: "get_stopwatch_time",
-//       description: "Get the current elapsed time of the stopwatch.",
-//       parameters: { type: "object", properties: {} },
-//     },
-//   },
-// ];
 
 const getApiKey = () => import.meta.env.VITE_OPENROUTER_API_KEY || "";
 
@@ -87,17 +21,14 @@ export default function App() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  // Local Tool State: Todos
   const [todos, setTodos] = useState([
     { id: 1, text: "Explore OpenRouter API capabilities", completed: false },
   ]);
-  // Local Tool State: Stopwatch
   const [stopwatchTime, setStopwatchTime] = useState(0);
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
   const messagesEndRef = useRef(null);
   const stopwatchIntervalRef = useRef(null);
 
-  // --- EFFECT: Stopwatch Timer Loop ---
   useEffect(() => {
     if (isStopwatchRunning) {
       stopwatchIntervalRef.current = setInterval(() => {
@@ -109,24 +40,10 @@ export default function App() {
     return () => clearInterval(stopwatchIntervalRef.current);
   }, [isStopwatchRunning]);
 
-  // --- EFFECT: Auto-scroll Chat ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  // --- FORMATTER: Stopwatch UI Display ---
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const secs = (seconds % 60).toString().padStart(2, "0");
-    return `${mins}:${secs}`;
-  };
-
-  // ============================================================================
-  // LOCAL TOOLS EXECUTION ENGINE (Synchronous State Intermediaries)
-  // ============================================================================
-  // Using functional updates or references where state updates are vital inside loops
   const executeLocalTool = (name, args) => {
     switch (name) {
       case "add_todo": {
@@ -137,12 +54,11 @@ export default function App() {
         ]);
         return JSON.stringify({
           success: true,
-          message: `Added todo: "${args.text}"`,
           id: newId,
+          message: `Added todo: "${args.text}"`,
         });
       }
       case "list_todos": {
-        // Fallback reading mapping to keep tool stream pure
         let currentTodos = [];
         setTodos((prev) => {
           currentTodos = prev;
@@ -153,7 +69,8 @@ export default function App() {
       case "complete_todo": {
         setTodos((prev) =>
           prev.map((t) =>
-            t.id === Number(args.id) ? { ...t, completed: true } : t,
+            // t.id === Number(args.id) ? { ...t, completed: true } : t,
+            String(t.id) === String(args.id) ? { ...t, completed: true } : t,
           ),
         );
         return JSON.stringify({
@@ -193,9 +110,6 @@ export default function App() {
     }
   };
 
-  // ============================================================================
-  // API REQUEST WITH RETRIES & BACKOFF (Mitigates 429 Rate Limits)
-  // ============================================================================
   const fetchChatCompletion = async (
     messagesPayload,
     retries = 2,
@@ -220,6 +134,7 @@ export default function App() {
       body: JSON.stringify({
         model: MODEL_ID,
         messages: messagesPayload,
+        tools: TOOL_SCHEMAS,
       }),
     });
 
@@ -241,14 +156,9 @@ export default function App() {
     }
 
     const data = await response.json();
-    console.log("Extracted Text:", data?.choices?.[0]?.message?.content);
-    
     return data;
   };
 
-  // ============================================================================
-  // THE AGENTIC TOOL CALING LOOP
-  // ============================================================================
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -265,7 +175,7 @@ export default function App() {
       let currentMessagesPayload = [...updatedMessages];
       let keepLooping = true;
       let loopCount = 0;
-      const MAX_LOOPS = 4; // Safety breaking cap
+      const MAX_LOOPS = 4;
 
       while (keepLooping && loopCount < MAX_LOOPS) {
         loopCount++;
@@ -279,7 +189,6 @@ export default function App() {
           );
         }
 
-        // Standardize structure for OpenAI/OpenRouter system responses
         const nativeResponseObject = {
           role: "assistant",
           content: assistantMessage.content || "",
@@ -293,15 +202,12 @@ export default function App() {
           assistantMessage.tool_calls &&
           assistantMessage.tool_calls.length > 0
         ) {
-          // Process all concurrent tool execution requests sent by the model
           for (const toolCall of assistantMessage.tool_calls) {
             const toolName = toolCall.function.name;
             const toolArgs = JSON.parse(toolCall.function.arguments || "{}");
 
-            // Execute tool against local state
             const toolResultString = executeLocalTool(toolName, toolArgs);
 
-            // Append Tool Response structure to conversation logs
             currentMessagesPayload.push({
               role: "tool",
               name: toolName,
@@ -310,9 +216,8 @@ export default function App() {
             });
           }
           setMessages([...currentMessagesPayload]);
-          // Continue while loop to allow assistant to interpret results
         } else {
-          keepLooping = false; // Exit when conversational response returns with no further tool requirements
+          keepLooping = false;
         }
       }
     } catch (err) {
@@ -325,7 +230,15 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* RIGHT PANEL: Chat Application Interface */}
+      {/* Sidebar */}
+      <Sidebar
+        todos={todos}
+        stopwatchTime={stopwatchTime}
+        isStopwatchRunning={isStopwatchRunning}
+        setIsStopwatchRunning={setIsStopwatchRunning}
+        setStopwatchTime={setStopwatchTime}
+        executeLocalTool={executeLocalTool}
+      />
       <main className="chat-area">
         <header className="chat-header">
           <h1>Agentic Local Assistant</h1>

@@ -1,6 +1,14 @@
 import React from "react";
+import { formatTime } from "../utils/formatter";
 
-export default function Sidebar({ stopwatchTime, isStopwatchRunning, todos }) {
+export default function Sidebar({
+  stopwatchTime,
+  isStopwatchRunning,
+  setIsStopwatchRunning,
+  setStopwatchTime,
+  todos,
+  executeLocalTool,
+}) {
   return (
     <aside className="sidebar">
       <div className="panel-section">
